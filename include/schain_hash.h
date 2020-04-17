@@ -3,18 +3,23 @@
 
 #include <unistd.h>
 
-typedef struct htable *HTable;
+typedef struct htable *Table;
+typedef struct bucket *Bucket;
 
-extern HTable htable(const size_t size);
+extern Table htable(const size_t size);
 
-extern void free_table(HTable table);
+extern void free_table(Table table);
 
-extern float balance_factor(HTable table);
+extern float balance_factor(Table table);
 
-extern HTable insert(HTable table, const int key);
+extern Table insert(Table table, const int key);
 
-extern HTable delete(HTable table, const int key);
+extern Table delete(Table table, const int key);
 
-extern void print_table(HTable table);
+extern Bucket search(Table table, const int key);
+
+extern void print_key(Bucket bucket);
+
+extern void print_table(Table table);
 
 #endif

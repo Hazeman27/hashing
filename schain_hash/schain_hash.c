@@ -132,17 +132,6 @@ struct htable *rehash_table(struct htable *table)
 	return new_table;
 }
 
-struct bucket *search_bucket(struct bucket *bucket, const int key)
-{
-	if (!bucket)
-		return NULL;
-
-	if (bucket->key == key)
-		return bucket;
-
-	return search_bucket(bucket->next, key);
-}
-
 struct htable *delete(struct htable *table, const int key)
 {
 	if (!table)
@@ -166,7 +155,7 @@ struct htable *delete(struct htable *table, const int key)
 struct htable *insert(struct htable *table, const int key)
 {
 	if (!table)
-		table = htable(1);
+		return NULL;
 
 	struct bucket **indirect = &table->buckets[hash(key, table->size)];
 
@@ -196,27 +185,53 @@ struct htable *insert(struct htable *table, const int key)
 	return table;
 }
 
+struct bucket *search(struct htable *table, const int key)
+{
+	if (!table)
+		return NULL;
+
+	struct bucket **indirect = &table->buckets[hash(key, table->size)];
+
+	while (*indirect) {
+
+		if (!(*indirect)->deleted && (*indirect)->key == key)
+			return *indirect;
+
+		indirect = &(*indirect)->next;
+	}
+
+	return NULL;
+}
+
+void print_key(struct bucket *bucket)
+{
+	if (!bucket)
+		return;
+
+	printf(CLR_CYAN "Bucket key: " CLR_YELLOW "[%d]\n" CLR_RESET, bucket->key);
+}
+
 void print_table(struct htable *table)
 {
 	if (!table)
 		return;
 
-	printf("\n>>> Printing Hash Table:\n");
+	printf(CLR_GREEN "\n>>> Printing Hash Table:\n\n" CLR_RESET);
 
 	for (size_t i = 0; i < table->size; i++) {
 
-		printf("%ld: ", i);
+		printf(CLR_BLUE "%ld: " CLR_RESET, i);
 		struct bucket *current = table->buckets[i];
 
 		if (!current) {
-			printf("~");
+			printf(CLR_CYAN "~" CLR_RESET);
 		} else {
 			while (current) {
 
 				if (current->deleted) {
-					printf("**DELETED** ");
+					printf(CLR_RED "**DELETED** " CLR_RESET);
 				} else {
-					printf("%d ", current->key);
+					printf(CLR_CYAN "%d " CLR_RESET, current->key);
 				}
 
 				current = current->next;
@@ -226,5 +241,5 @@ void print_table(struct htable *table)
 		printf("\n");
 	}
 
-	printf(">>>\n");
+	printf(CLR_GREEN "---------------------------------\n\n" CLR_RESET);
 }

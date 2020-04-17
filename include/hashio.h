@@ -13,12 +13,13 @@
 
 #define UNKNOWN_CMD_ERR "Unknown command"
 #define UNDEF_FUNC_T	"No defined function for the type"
+#define KEY_NFOUND_MSG	"Key not found."
 #define EXIT_MSG 	"Exiting...\n"
 
 #define ENOMEM 		"Insufficent memory, cannot allocate node"
 #define EDUPVAL 	"Duplicate value insertion. Operation rejected"
 
-#define COMMANDS CLR_CYAN "Commands:\n\th - print commands\n\ti [...values] - insert keys\n\td [...values] - delete keys\n\tt - run insert tests from ./data/randnumbers file\n\tp - print hash table\n\tr - reset hash table\n\tq - exit program\n--------------------------\n" CLR_RESET
+#define COMMANDS CLR_CYAN "Commands:\n\th - print commands\n\ti [...values] - insert keys\n\td [...values] - delete keys\n\ts - search for key\n\tt - run insert tests from ./data/randnumbers file\n\tp - print hash table\n\tq - exit program\n--------------------------\n" CLR_RESET
 
 #define TESTS_COMPLETE_MSG CLR_YELLOW "\n>> Tests complete. Results written to the ./data/timestampts file --\n" CLR_RESET
 #define WELCOME_MSG CLR_MAGENTA "-- Welcome to hash tables interaction tool!\n" CLR_RESET COMMANDS

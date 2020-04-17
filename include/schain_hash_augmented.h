@@ -2,7 +2,6 @@
 #define SCHAINHASH_AUGMENTED_H
 
 #include <stdlib.h>
-#include <stdio.h>
 #include <stdbool.h>
 
 struct bucket {
@@ -34,7 +33,12 @@ extern struct htable *insert(struct htable *table, const int key);
 
 extern struct htable *delete(struct htable *table, const int key);
 
+extern struct bucket *search(struct htable *table, const int key);
+
+extern void print_key(struct bucket *bucket);
+
 extern void print_table(struct htable *table);
+
 
 
 #endif
