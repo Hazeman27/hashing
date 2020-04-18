@@ -117,9 +117,9 @@ static inline size_t hash(const char *key, const size_t table_size)
 	size_t i = 1;
 
 	while (*key)
-		index = index * 6151 + (*key++ * i++);
+		index = (index * 6151 + (*key++ * i++)) % table_size;
 
-	return index % table_size;
+	return index;
 }
 
 struct htable *rehash_entry(struct htable *table, struct entry *entry)
@@ -182,7 +182,6 @@ struct htable *insert(struct htable *table, const char *key, int value)
 
 		if (equals((*indirect)->key, key)) {
 			errno = EPERM;
-			perror("Duplicate nodes are not allowed");
 			return table;
 		}
 
@@ -201,7 +200,7 @@ struct htable *insert(struct htable *table, const char *key, int value)
 	*indirect = entry((struct entry) {
 			.key = strdup(key), .value = value});
 	
-	if (load_factor(table) > 0.5f)
+	if (load_factor(table) > 1.5f)
 		return rehash_table(table);
 	
 	return table;

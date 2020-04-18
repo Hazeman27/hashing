@@ -99,9 +99,9 @@ static inline size_t hash(const char *key, const size_t table_size)
 	size_t i = 1;
 
 	while (*key)
-		index = index * 6151 + (*key++ * i++);
+		index = (index * 6151 + (*key++ * i++)) % table_size;
 
-	return index % table_size;
+	return index;
 }
 ```
 
@@ -157,10 +157,10 @@ struct htable *rehash_table(struct htable *table)
 
 ```
 
-To know when to rehash the table, we need to calculate the *load factor* of the table. Load factor is the ratio between the number of the elements table currently holds and the size of the table. When this ratio becomes larger then `0.5`, we rehash the table: 
+To know when to rehash the table, we need to calculate the *load factor* of the table. Load factor is the ratio between the number of the elements table currently holds and the size of the table. When this ratio becomes larger then `1.5`, we rehash the table: 
 
 ```c	
-if (load_factor(table) > 0.5f)
+if (load_factor(table) > 1.5f)
 	return rehash_table(table);
 ```
 
@@ -247,17 +247,17 @@ To compare these two implementations, several test scenarios with random keys an
   </tr>
   <tr>
     <td>100 entries</td>
-    <td>10 000&nbsp;&nbsp;entries</td>
-    <td>100 000 entries</td>
+    <td>10000&nbsp;&nbsp;entries</td>
+    <td>100000 entries</td>
     <td>100 entries</td>
-    <td>10 000 entries</td>
-    <td>100 000 entries</td>
+    <td>10000 entries</td>
+    <td>100000 entries</td>
   </tr>
   <tr>
     <td>Separate chaining</td>
     <td><span style="font-weight:400;font-style:normal">~0.000002</span><br></td>
-    <td><span style="font-weight:400;font-style:normal">~0.000117</span><br></td>
-    <td>~0.001122</td>
+    <td><span style="font-weight:400;font-style:normal">~0.000042</span><br></td>
+    <td>~0.001052</td>
     <td><span style="font-weight:400;font-style:normal">~0.000000</span></td>
     <td>~0.000000</td>
     <td>~0.000000</td>
