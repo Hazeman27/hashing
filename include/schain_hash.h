@@ -10,15 +10,13 @@ extern Table htable(size_t size);
 
 extern void free_table(Table table);
 
-extern float balance_factor(Table table);
+extern Table insert(Table table, const char *key, int value);
 
-extern Table insert(Table table, const int key);
+extern Table delete(Table table, const char *key);
 
-extern Table delete(Table table, const int key);
+extern Entry search(Table table, const char *key);
 
-extern Entry search(Table table, const int key);
-
-extern void print_key(Entry entry);
+extern void print_entry(Entry entry);
 
 extern void print_table(Table table);
 

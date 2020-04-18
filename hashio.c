@@ -1,14 +1,14 @@
-
 #include <stdbool.h>
 #include <time.h>
 #include "include/schain_hash.h"
-#include "include/schain_hash_assert.h"
 #include "include/hashio.h"
 
-#define DATA_PATH "data/randnumbers"
 #define OUT_PATH "data/timestamps"
 
 #define BILLION 1000000000.0
+
+#define KEY_MAX_L 12
+#define VALUE_MAX 100000
 
 #define __INIT_DELTA_TIME__ 		\
 	double time_d;			\
@@ -33,92 +33,115 @@
 static inline void exit_program(Table table, int code)
 {
 	free_table(table);
-	msg(CLR_YELLOW EXIT_MSG CLR_RESET);
 	exit(code);
 }
 
 static inline void run_file_test(Table *table)
 {
-	FILE *input = fopen(DATA_PATH, "r");
 	FILE *output = fopen(OUT_PATH, "w");
 
-	if (!input || !output)
+	if (!output)
 		return;
 
-	int n;
-	int counter = 0;
-	double avg_time = 0.0; 
+	size_t iter_count, i, j;
+
+	double avg_insert_time;
+	double avg_search_time;
+
+	double avg_time = 0.0;	
 
 	__INIT_DELTA_TIME__;
+	
+	printf(CLR_CYAN "Enter iterations count: " CLR_RESET);
 
+	if (scanf("%ld", &iter_count) != 1) {
+		errno = EPERM;
+		perror("Only numbers are allowed");
+		return;
+	}
+	
+	if (iter_count < 0) {
+		errno = 1;
+		perror("Only positive numbers are allowed");
+		return;
+	}
+
+	char *keys[iter_count];
+	
 	fprintf(output, "---- Inserting keys ----\n\n");
 
-	while (fscanf(input, "%d", &n) == 1) {
+	for (i = 0; i < iter_count; i++) {
+
+		size_t key_length = rand() % KEY_MAX_L + 2;
+		char key[KEY_MAX_L];
+
+		for (j = 0; j < key_length; j++)
+			key[j] = 'a' + rand() % 25;
+		
+		key[j] = '\0';
+		keys[i] = key;
+
 		__START_DELTA_TIME__;
 
-		*table = insert(*table, n);
+		*table = insert(*table, key, rand() % VALUE_MAX);
 
 		__CALC_DELTA_TIME__;
 		__print_delta_time(output);
 
 		avg_time += time_d;
-		counter++;
 	}
 
-	avg_time /= (double) counter;
-
-	fprintf(output, "\n\n==== Average insertion time: %lf seconds\n\n", avg_time);
-	fprintf(output, "\n\n---- Searching nodes ----\n\n");
-
-	rewind(input);
+	avg_insert_time = avg_time / (double) i;
 
 	avg_time = 0.0;
-	counter = 0;
-
-	while (fscanf(input, "%d", &n) == 1) {
+	fprintf(output, "\n\n---- Searching nodes ----\n\n");
+	
+	for (i = 0; i < iter_count; i++) {
 		__START_DELTA_TIME__;
 
-		search(*table, n);
+		search(*table, keys[i]);
 
 		__CALC_DELTA_TIME__;
 		__print_delta_time(output);
 
 		avg_time += time_d;
-		counter++;
 	}
 
-	avg_time /= (double) counter;
-	fprintf(output, "\n\n==== Average search time: %lf seconds\n\n", avg_time);
-
-	fclose(input);
-	fclose(output);
+	avg_search_time = avg_time / (double) i;
 	
-	msg(TESTS_COMPLETE_MSG);
+	fprintf(output, "\n\n==== Average search time: %lf seconds\n\n", avg_search_time);
+	fprintf(output, "\n\n==== Average insertion time: %lf seconds\n\n", avg_insert_time);
+
+	fclose(output);
+	printf(CLR_CYAN "Random insertion and search test is complete\n" CLR_RESET);
 }
 
-static inline void insert_keys(Table *table)
+static inline void insert_key(Table *table)
 {
-	int key;
+	char key[KEY_MAX_L];
+	int value;
 	
+	getchar();	
 	__INIT_DELTA_TIME__;
 
-	while (scanf("%d", &key) == 1) {
+	if (scanf("%s %d", key, &value) == 2) {
+		getchar();
 		__START_DELTA_TIME__;
 		
-		*table = insert(*table, key);
+		*table = insert(*table, key, value);
 
 		__CALC_DELTA_TIME__;
 		__print_delta_time(stdout);
 	}
 }
 
-static inline void delete_keys(Table *table)
+static inline void delete_key(Table *table)
 {
-	int key;
+	char key[KEY_MAX_L];
 	
 	__INIT_DELTA_TIME__;
 
-	while (scanf("%d", &key) == 1) {
+	if (scanf("%s", key) == 1) {
 		__START_DELTA_TIME__;
 		
 		*table = delete(*table, key);
@@ -130,11 +153,11 @@ static inline void delete_keys(Table *table)
 
 static inline void search_key(Table table)
 { 
-	int key;
+	char key[KEY_MAX_L];
 
 	__INIT_DELTA_TIME__;
 
-	if (scanf("%d", &key) != 1)
+	if (scanf("%s", key) != 1)
 		return;
 	getchar();
 	
@@ -146,18 +169,18 @@ static inline void search_key(Table table)
 	__print_delta_time(stdout);
 
 	if (entry) {
-		print_key(entry);
+		print_entry(entry);
 	} else {
-		msg(KEY_NFOUND_MSG "\n");
+		printf("Entry not found...\n");
 	}
 }
 
 static inline void handle_cmd(const char cmd, Table *table)
 {
 	switch (cmd) {
-		case 'h'	: msg(COMMANDS);			break;
-		case 'i'	: insert_keys(table); 			break;
-		case 'd'	: delete_keys(table);			break;
+		case 'h'	: printf(COMMANDS);			break;
+		case 'i'	: insert_key(table); 			break;
+		case 'd'	: delete_key(table);			break;
 		case 's'	: search_key(*table);			break;
 		case 'p'	: print_table(*table); 			break;
 		case 'q'	: exit_program(*table, EXIT_SUCCESS);	break;
@@ -169,13 +192,13 @@ static inline void handle_cmd(const char cmd, Table *table)
 
 int main(void)
 {
-	run_internal_tests();
-	
+	//run_internal_tests();
+
 	char input;
 	size_t table_size;
 
-	msg(WELCOME_MSG);
-	msg(CLR_YELLOW "Enter table size: " CLR_RESET);
+	printf(WELCOME_MSG);
+	printf(CLR_YELLOW "Enter table size: " CLR_RESET);
 	
 	if (scanf("%ld", &table_size) != 1 || table_size <= 0)
 		return -1;

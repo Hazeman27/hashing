@@ -46,29 +46,36 @@ static inline struct entry *entry(const struct entry init)
 {
 	struct entry *entry = (struct entry *) malloc(sizeof(struct entry));
 
-	if (!entry)
+	if (!entry) {
+		errno = ENOMEM;
 		return NULL;
+	}
 
 	return (*entry = init, entry);
 }
 
 struct htable *htable(size_t size)
 {
-	if (size <= 0)
+	if (size <= 0) {
+		errno = EPERM;
+		perror("Hash table size must be larger then 0");
 		return NULL;
+	}
 	
 	struct htable *table = (struct htable *) malloc(sizeof(struct htable));
 	
 	size = nearest_prime(size);
 	table->buckets = (struct entry **) malloc(sizeof(struct entry *) * size);
 
-	if (!table || !table->buckets)
+	if (!table || !table->buckets) {
+		errno = ENOMEM;
 		return NULL;
+	}
 
 	return (table->size = size, table);
 }
 
-void free_entry(struct entry *entry)
+static void free_entry(struct entry *entry)
 {
 	if (!entry)
 		return;
@@ -86,7 +93,7 @@ void free_table(struct htable *table)
 	free(table);
 }
 
-size_t bucket_depth(struct entry *entry)
+static size_t bucket_depth(struct entry *entry)
 {
 	if (!entry)
 		return 0;
@@ -94,7 +101,7 @@ size_t bucket_depth(struct entry *entry)
 	return (entry->deleted ? 0 : 1) + bucket_depth(entry->next);
 }
 
-float load_factor(struct htable *table)
+static inline float load_factor(struct htable *table)
 {
 	size_t buckets_count = 0;
 
@@ -104,9 +111,15 @@ float load_factor(struct htable *table)
 	return (float) buckets_count / (float) table->size;
 }
 
-size_t hash(const int key, const size_t table_size)
+static inline size_t hash(const char *key, const size_t table_size)
 {
-	return key % table_size;
+	size_t index = 0;
+	size_t i = 1;
+
+	while (*key)
+		index = index * 6151 + (*key++ * i++);
+
+	return index % table_size;
 }
 
 struct htable *rehash_entry(struct htable *table, struct entry *entry)
@@ -114,7 +127,7 @@ struct htable *rehash_entry(struct htable *table, struct entry *entry)
 	if (!entry)
 		return table;
 		
-	table = insert(table, entry->key);
+	table = insert(table, entry->key, entry->value);
 
 	return rehash_entry(table, entry->next);
 }
@@ -133,7 +146,12 @@ struct htable *rehash_table(struct htable *table)
 	return new_table;
 }
 
-struct htable *delete(struct htable *table, const int key)
+bool equals(const char *str_a, const char *str_b)
+{
+	return !strcmp(str_a, str_b);
+}
+
+struct htable *delete(struct htable *table, const char *key)
 {
 	if (!table)
 		return NULL;
@@ -142,7 +160,7 @@ struct htable *delete(struct htable *table, const int key)
 
 	while (*indirect) {
 
-		if ((*indirect)->key == key) {
+		if (equals((*indirect)->key, key)) {
 			(*indirect)->deleted = true;
 			return table;
 		}
@@ -153,7 +171,7 @@ struct htable *delete(struct htable *table, const int key)
 	return table;
 }
 
-struct htable *insert(struct htable *table, const int key)
+struct htable *insert(struct htable *table, const char *key, int value)
 {
 	if (!table)
 		return NULL;
@@ -162,14 +180,16 @@ struct htable *insert(struct htable *table, const int key)
 
 	while (*indirect) {
 
-		if ((*indirect)->key == key) {
-			perror(EDUPVAL);
+		if (equals((*indirect)->key, key)) {
+			errno = EPERM;
+			perror("Duplicate nodes are not allowed");
 			return table;
 		}
 
 		if ((*indirect)->deleted) {
 
-			(*indirect)->key = key;
+			(*indirect)->key = strdup(key);
+			(*indirect)->value = value;
 			(*indirect)->deleted = false;
 			
 			return table;
@@ -178,7 +198,8 @@ struct htable *insert(struct htable *table, const int key)
 		indirect = &(*indirect)->next;
 	}
 
-	*indirect = entry((struct entry) { .key = key });
+	*indirect = entry((struct entry) {
+			.key = strdup(key), .value = value});
 	
 	if (load_factor(table) > 0.5f)
 		return rehash_table(table);
@@ -186,7 +207,7 @@ struct htable *insert(struct htable *table, const int key)
 	return table;
 }
 
-struct entry *search(struct htable *table, const int key)
+struct entry *search(struct htable *table, const char *key)
 {
 	if (!table)
 		return NULL;
@@ -195,7 +216,7 @@ struct entry *search(struct htable *table, const int key)
 
 	while (*indirect) {
 
-		if (!(*indirect)->deleted && (*indirect)->key == key)
+		if (!(*indirect)->deleted && equals((*indirect)->key, key))
 			return *indirect;
 
 		indirect = &(*indirect)->next;
@@ -204,12 +225,13 @@ struct entry *search(struct htable *table, const int key)
 	return NULL;
 }
 
-void print_key(struct entry *entry)
+void print_entry(struct entry *entry)
 {
 	if (!entry)
 		return;
 
-	printf(CLR_CYAN "Entry key: " CLR_YELLOW "[%d]\n" CLR_RESET, entry->key);
+	printf(CLR_CYAN "[%s]: " CLR_YELLOW "[%d]\n" CLR_RESET,
+			entry->key, entry->value);
 }
 
 void print_table(struct htable *table)
@@ -232,7 +254,8 @@ void print_table(struct htable *table)
 				if (current->deleted) {
 					printf(CLR_RED "**DELETED** " CLR_RESET);
 				} else {
-					printf(CLR_CYAN "%d " CLR_RESET, current->key);
+					printf(CLR_CYAN "[%s: %d] " CLR_RESET,
+							current->key, current->value);
 				}
 
 				current = current->next;

@@ -5,6 +5,9 @@
 - [Separate Chaining](#separate-chaining)
 	- [Introduction](#introduction)
 	- [Implementation](#implementation)
+- [Cuckoo hashing](#cuckoo-hashing)
+	- [Introduction](#introduction)
+	- [Implementation](#implementation)
 - [Comparison](#comparison)
 - [References](#references)
 
@@ -65,7 +68,8 @@ Hash table consists of buckets. Each bucket has a list of entries. Single entry 
 
 ```c
 struct entry {
-	int key;
+	char *key;	
+	int value;
 	bool deleted;
 	struct entry *next;
 };
@@ -86,16 +90,22 @@ Structure has an array of *buckets*, where each bucket is an array of *entries*.
 
 ### Hash function
 
-Hash table requires *hash function* that will calculate the index for the given key. In our case, it is a simple modulo function:
+Hash table requires *hash function* that will calculate the index for the given key. In our case, it is a simple modulo function with multiplication operations on each character of the key string:
 
 ```c
-size_t hash(const int key, const size_t table_size)
+static inline size_t hash(const char *key, const size_t table_size)
 {
-	return key % table_size;
+	size_t index = 0;
+	size_t i = 1;
+
+	while (*key)
+		index = index * 6151 + (*key++ * i++);
+
+	return index % table_size;
 }
 ```
 
-Advantage of this function is that it is very fast. But to mitigate high amount of collisions that it may produce, it requires a table size that is a *prime number*. And to further reduce collisions, prime number chosen as the table size, needs to be as far as possible from the nearest *power of two*.
+To mitigate high amount of collisions that it may produce, it requires a table size that is a *prime number*. And to further reduce collisions, prime number chosen as the table size, needs to be as far as possible from the nearest *power of two*.
 
 All of the above can be written in a simple function:
 
@@ -163,7 +173,7 @@ Deletion of the key is relatively simple:
 * If entry is found, mark it as *deleted*.
 
 ```c
-struct htable *delete(struct htable *table, const int key)
+struct htable *delete(struct htable *table, const char *key)
 {
 	if (!table)
 		return NULL;
@@ -172,7 +182,7 @@ struct htable *delete(struct htable *table, const int key)
 
 	while (*indirect) {
 
-		if ((*indirect)->key == key) {
+		if (equals((*indirect)->key, key)) {
 			(*indirect)->deleted = true;
 			return table;
 		}
@@ -193,7 +203,7 @@ Searching for the key is straightforward:
 * If entry is found, return it.
 
 ```c
-struct entry *search(struct htable *table, const int key)
+struct entry *search(struct htable *table, const char *key)
 {
 	if (!table)
 		return NULL;
@@ -202,7 +212,7 @@ struct entry *search(struct htable *table, const int key)
 
 	while (*indirect) {
 
-		if (!(*indirect)->deleted && (*indirect)->key == key)
+		if (!(*indirect)->deleted && equals((*indirect)->key, key))
 			return *indirect;
 
 		indirect = &(*indirect)->next;
@@ -212,10 +222,65 @@ struct entry *search(struct htable *table, const int key)
 }
 ```
 
-# Other implementation
+# Cuckoo hashing
+
+## Introduction
+
+Cuckoo hashing is an alternative open-adressing method of collision resolution in hash tables.  It uses two or more hash functions, which means any key/value pair could be in two or more locations. For lookup, the first hash function is used; if the key/value is not found, then the second hash function is used, and so on. If a collision happens during insertion, then the key is re-hashed with the second hash function to map it to another bucket. If all hash functions are used and there is still a collision, then the key it collided with is removed to make space for the new key, and the old key is re-hashed with one of the other hash functions, which maps it to another bucket. If that location also results in a collision, then the process repeats until there is no collision or the process traverses all the buckets, at which point the table is resized. By combining multiple hash functions with multiple cells per bucket, very high space utilization can be achieved ([taken from wikipedia][1]). 
+
+## Implementation
+
+This [implementation][3] of Cuckoo hashing is by [Canasai Kruengkrai][2].
+
+For testing purposes only portion of his project was taken. In particular, export functions are not included. Function names were aliased to ones used in `hashio` interaction program.
+
 # Comparison
+
+To compare these two implementations, several test scenarios with random keys and values were conducted. Here are the results:
+
+<table>
+  <tr>
+    <th rowspan="2">Implementation</th>
+    <th colspan="3">Average insertion time in seconds</th>
+    <th colspan="3">Average search time in seconds</th>
+    <th rowspan="2">Entry size</th>
+  </tr>
+  <tr>
+    <td>100 entries</td>
+    <td>10 000&nbsp;&nbsp;entries</td>
+    <td>100 000 entries</td>
+    <td>100 entries</td>
+    <td>10 000 entries</td>
+    <td>100 000 entries</td>
+  </tr>
+  <tr>
+    <td>Separate chaining</td>
+    <td><span style="font-weight:400;font-style:normal">~0.000002</span><br></td>
+    <td><span style="font-weight:400;font-style:normal">~0.000117</span><br></td>
+    <td>~0.001122</td>
+    <td><span style="font-weight:400;font-style:normal">~0.000000</span></td>
+    <td>~0.000000</td>
+    <td>~0.000000</td>
+    <td>24</td>
+  </tr>
+  <tr>
+    <td>Cuckoo hashing</td>
+    <td>~0.000001</td>
+    <td>~0.000001</td>
+    <td><span style="font-weight:400;font-style:normal">~0.000001</span></td>
+    <td><span style="font-weight:400;font-style:normal">~0.000000</span><br></td>
+    <td><span style="font-weight:400;font-style:normal">~0.000000</span></td>
+    <td><span style="font-weight:400;font-style:normal">~0.000000</span></td>
+    <td>16</td>
+  </tr>
+</table>
+
+As we can see, Cuckoo hashing is much more superior method then simple separate chaining.
+
 # References
 
 * [en.wikipedia.org, Hash Table][1]
 
 [1]: https://en.wikipedia.org/wiki/Hash_table 
+[2]: https://github.com/canasai
+[3]: https://github.com/canasai/ckhash

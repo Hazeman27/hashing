@@ -2,6 +2,7 @@ vpath %.h include
 vpath %.o objects
 
 flags := -g -O2 -Wall 
+postflags := -lm
 
 outdir := out
 incdir := include
@@ -21,7 +22,7 @@ ifeq ($(assert), true)
 endif
 
 $(outdir)/$(main): $(objs) | $(outdir)
-	cc $(flags) $^ -o $@
+	cc $(flags) $^ $(postflags) -o $@
 
 $(objs): | $(objdir)
 
