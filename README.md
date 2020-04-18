@@ -21,12 +21,14 @@ This project comes with a small interaction program - `hashio`. It can be used t
 
 Project contains a `Makefile` to compile `hashio` program. Default setting is to compile it with *Separate Chaining* implementation, but you can change this behavior:
 
-* You can manually specify default behavior in Makefile.
+* You can manually specify default behavior in the Makefile.
 * You can pass `target=[implementation_name]` argument to `make` command.
 
 If you want to compile program with different implementation, you also need to change `#include` statement inside `hashio.c` to match the name of the implementation.
 
 Target name is the name of the folder that contains source files for the given implementation.
+
+**Note**: second implementation that this project includes - *Cuckoo hashing* by [Canasai Kruengkrai][2] does not return pointer to the table after *insert* and *delete* operations. So if you wish to run `hashio` with that implementation, then you have to replace any `*table = [operation_name](...args)` with just `[operation_name](...args);`. Otherwise, program will not work properly and you will encounter `Segmentation Fault` error.
 
 ## Unit tests
 
@@ -105,7 +107,7 @@ static inline size_t hash(const char *key, const size_t table_size)
 }
 ```
 
-To mitigate high amount of collisions that it may produce, it requires a table size that is a *prime number*. And to further reduce collisions, prime number chosen as the table size, needs to be as far as possible from the nearest *power of two*.
+To mitigate high amount of collisions that hash function will inevitably produce, it requires a table size that is a *prime number*. And to further reduce collisions, prime number chosen as the table size, needs to be as far as possible from the nearest *power of two*.
 
 All of the above can be written in a simple function:
 
@@ -119,7 +121,7 @@ size_t nearest_prime(const size_t n)
 }
 ```
 
-To make the usage of the hash table easier, this function is called during the allocation to *tweak* the size.
+To make the usage of the hash table easier, this function is called during the allocation to *tweak* the size of the table.
 
 ### Insert
 
