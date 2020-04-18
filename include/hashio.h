@@ -2,6 +2,7 @@
 #define HASHIO_H
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #define CLR_RED     	"\x1b[31m"
 #define CLR_GREEN  	"\x1b[32m"

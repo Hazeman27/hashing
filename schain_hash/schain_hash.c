@@ -42,67 +42,66 @@ static inline size_t nearest_prime(const size_t n)
 	return nearest_prime(n + 1);
 }
 
-static inline struct bucket *bucket(const struct bucket init)
+static inline struct entry *entry(const struct entry init)
 {
-	struct bucket *bucket = (struct bucket *) malloc(sizeof(struct bucket));
+	struct entry *entry = (struct entry *) malloc(sizeof(struct entry));
 
-	if (!bucket)
+	if (!entry)
 		return NULL;
 
-	return (*bucket = init, bucket);
+	return (*entry = init, entry);
 }
 
 struct htable *htable(size_t size)
 {
 	if (size <= 0)
 		return NULL;
-
+	
+	struct htable *table = (struct htable *) malloc(sizeof(struct htable));
+	
 	size = nearest_prime(size);
+	table->buckets = (struct entry **) malloc(sizeof(struct entry *) * size);
 
-	struct htable *table = (struct htable *) malloc(
-		sizeof(struct htable) + (sizeof(struct bucket *) * size)		
-	);
-
-	if (!table)
+	if (!table || !table->buckets)
 		return NULL;
 
 	return (table->size = size, table);
 }
 
-void free_bucket(struct bucket *bucket)
+void free_entry(struct entry *entry)
 {
-	if (!bucket)
+	if (!entry)
 		return;
 
-	free_bucket(bucket->next);
-	free(bucket);
+	free_entry(entry->next);
+	free(entry);
 }
 
 
 void free_table(struct htable *table)
 {
 	for (size_t i = 0; i < table->size; i++)
-		free_bucket(table->buckets[i]);
+		free_entry(table->buckets[i]);
 
 	free(table);
 }
 
-size_t bucket_depth(struct bucket *bucket)
+size_t bucket_depth(struct entry *entry)
 {
-	if (!bucket)
+	if (!entry)
 		return 0;
 
-	return (bucket->deleted ? 0 : 1) + bucket_depth(bucket->next);
+	return (entry->deleted ? 0 : 1) + bucket_depth(entry->next);
 }
 
-float balance_factor(struct htable *table)
+float load_factor(struct htable *table)
 {
-	size_t entries_count = 0;
+	size_t buckets_count = 0;
 
 	for (size_t i = 0; i < table->size; i++)
-		entries_count += bucket_depth(table->buckets[i]);
+		buckets_count += bucket_depth(table->buckets[i]);
 
-	return (float) entries_count / (float) table->size;
+	return (float) buckets_count / (float) table->size;
 }
 
 size_t hash(const int key, const size_t table_size)
@@ -110,12 +109,14 @@ size_t hash(const int key, const size_t table_size)
 	return key % table_size;
 }
 
-struct htable *rehash_bucket(struct htable *table, struct bucket *bucket)
+struct htable *rehash_entry(struct htable *table, struct entry *entry)
 {
-	if (!bucket)
+	if (!entry)
 		return table;
+		
+	table = insert(table, entry->key);
 
-	return insert(rehash_bucket(table, bucket->next), bucket->key);
+	return rehash_entry(table, entry->next);
 }
 
 struct htable *rehash_table(struct htable *table)
@@ -126,7 +127,7 @@ struct htable *rehash_table(struct htable *table)
 		return NULL;
 
 	for (size_t i = 0; i < table->size; i++)
-		new_table = rehash_bucket(new_table, table->buckets[i]);
+		new_table = rehash_entry(new_table, table->buckets[i]);
 
 	free_table(table);
 	return new_table;
@@ -137,7 +138,7 @@ struct htable *delete(struct htable *table, const int key)
 	if (!table)
 		return NULL;
 	
-	struct bucket **indirect = &table->buckets[hash(key, table->size)];
+	struct entry **indirect = &table->buckets[hash(key, table->size)];
 
 	while (*indirect) {
 
@@ -157,7 +158,7 @@ struct htable *insert(struct htable *table, const int key)
 	if (!table)
 		return NULL;
 
-	struct bucket **indirect = &table->buckets[hash(key, table->size)];
+	struct entry **indirect = &table->buckets[hash(key, table->size)];
 
 	while (*indirect) {
 
@@ -177,20 +178,20 @@ struct htable *insert(struct htable *table, const int key)
 		indirect = &(*indirect)->next;
 	}
 
-	*indirect = bucket((struct bucket) { .key = key });
+	*indirect = entry((struct entry) { .key = key });
 	
-	if (balance_factor(table) > 0.5f)
+	if (load_factor(table) > 0.5f)
 		return rehash_table(table);
 	
 	return table;
 }
 
-struct bucket *search(struct htable *table, const int key)
+struct entry *search(struct htable *table, const int key)
 {
 	if (!table)
 		return NULL;
 
-	struct bucket **indirect = &table->buckets[hash(key, table->size)];
+	struct entry **indirect = &table->buckets[hash(key, table->size)];
 
 	while (*indirect) {
 
@@ -203,12 +204,12 @@ struct bucket *search(struct htable *table, const int key)
 	return NULL;
 }
 
-void print_key(struct bucket *bucket)
+void print_key(struct entry *entry)
 {
-	if (!bucket)
+	if (!entry)
 		return;
 
-	printf(CLR_CYAN "Bucket key: " CLR_YELLOW "[%d]\n" CLR_RESET, bucket->key);
+	printf(CLR_CYAN "Entry key: " CLR_YELLOW "[%d]\n" CLR_RESET, entry->key);
 }
 
 void print_table(struct htable *table)
@@ -221,7 +222,7 @@ void print_table(struct htable *table)
 	for (size_t i = 0; i < table->size; i++) {
 
 		printf(CLR_BLUE "%ld: " CLR_RESET, i);
-		struct bucket *current = table->buckets[i];
+		struct entry *current = table->buckets[i];
 
 		if (!current) {
 			printf(CLR_CYAN "~" CLR_RESET);

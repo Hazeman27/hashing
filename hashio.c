@@ -140,13 +140,13 @@ static inline void search_key(Table table)
 	
 	__START_DELTA_TIME__;
 
-	Bucket bucket = search(table, key);
+	Entry entry = search(table, key);
 	
 	__CALC_DELTA_TIME__;
 	__print_delta_time(stdout);
 
-	if (bucket) {
-		print_key(bucket);
+	if (entry) {
+		print_key(entry);
 	} else {
 		msg(KEY_NFOUND_MSG "\n");
 	}
